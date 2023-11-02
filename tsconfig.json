@@ -1,0 +1,28 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ],
+  "compilerOptions": {
+    "types": ["node"],
+    "rootDir": ".",
+    "baseUrl": ".",
+    "sourceMap": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/": ["./src/"]
+    },
+    "alwaysStrict": true
+  },
+  "include": [
+    "./test/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
