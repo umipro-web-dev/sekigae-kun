@@ -1,15 +1,16 @@
 interface memberType {
     value: string,
     status: boolean,
-	isLeader: boolean
+	isLeader: boolean,
+	gender: 1 | 2
 }
-const pickUpLeaders = (first: memberType[], second: memberType[]): string[] => {
-	const leaders: string[] = [];
-	first.forEach(({value, status, isLeader})=>{
-		if (status&&isLeader) leaders.push(value)
+const pickUpLeaders = (male: memberType[], female: memberType[]): memberType[] => {
+	const leaders: memberType[] = [];
+	male.forEach(({value, status, isLeader, gender}, index)=>{
+		if (status&&isLeader) leaders.push({value, isLeader, status, gender})
 	})
-	second.forEach(({value, status, isLeader})=>{
-		if (status&&isLeader) leaders.push(value)
+	female.forEach(({value, status, isLeader, gender})=>{
+		if (status&&isLeader) leaders.push({value, isLeader, status, gender})
 	})
 	return leaders
 }

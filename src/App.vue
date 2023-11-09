@@ -29,9 +29,9 @@
       </button>
     </div>
     <div class="add-member mt-5">
-      <div class="grade-one">
+      <div class="gender-one">
         <h4 class="mb-2">男子</h4>
-        <input type="text" class="first" v-model="firstGradeInput" @keydown.enter="addMember(1)" />
+        <input type="text" class="first" v-model="maleInput" @keydown.enter="addMember(1)" />
         <button class="firstRegister btn btn-primary" @click="addMember(1)">追加</button>
         <br>
         <table>
@@ -45,7 +45,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(i, index) in firstGradeMembers" :key="index">
+            <tr v-for="(i, index) in maleMembers" :key="index">
               <td>{{ index + 1 }}</td>
               <td :class="i.status ? '' : 'disable'">{{ i.value }}</td>
               <td><input type="checkbox" :checked="i.isLeader" @input="toggleIsLeader($event, 1, index)"/></td>
@@ -55,9 +55,9 @@
           </tbody>
         </table>
       </div>
-      <div class="grade-two">
+      <div class="gender-two">
         <h4 class="mb-2">女子</h4>
-        <input type="text" class="second" v-model="secondGradeInput" @keydown.enter="addMember(2)" />
+        <input type="text" class="second" v-model="femaleInput" @keydown.enter="addMember(2)" />
         <button class="secondRegister btn btn-primary" @click="addMember(2)">追加</button>
         <table>
           <thead>
@@ -70,7 +70,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(i, index) in secondGradeMembers" :key="index">
+            <tr v-for="(i, index) in femaleMembers" :key="index">
               <td>{{ index + 1 }}</td>
               <td :class="i.status ? '' : 'disable'">{{ i.value }}</td>
               <td><input type="checkbox" :checked="i.isLeader" @input="toggleIsLeader($event, 2, index)"/></td>
@@ -81,39 +81,20 @@
         </table>
       </div>
     </div>
-    <p class="title mb-5">グループ分けを実行する</p>
-    <div class="makeGroup mb-5">
-
-      <div class="makeGroupByGroupNum">
-        <p>グループ数で分ける</p>
-        <input type="number" v-model="GroupNum" @keydown.enter="makeGroupByGroup" />
+    <p class="title mb-5">席替えを実行する</p>
+    <div class="makeGroupByGroupNum mb-5">
         <button class="btn btn-primary" @click="makeGroupByGroup">実行</button>
-        <table class="group">
-          <tbody>
-            <tr v-for="(i, index) in GroupByGroup" :key="index">
-              <td>({{ index + 1 }})</td>
-              <div class="members">
-                <td v-for="(i2, index2) in i" :key="index2">{{ i2 }}</td>
-              </div>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="makeGroupByMemberNum">
-        <p>人数で分ける</p>
-        <input type="number" v-model="memberNum" @keydown.enter="makeGroupByMember" />
-        <button class="btn btn-primary" @click="makeGroupByMember">実行</button>
-        <table class="member">
-          <tbody>
-            <tr v-for="(i, index) in GroupByMember" :key="index">
-              <td>({{ index + 1 }})</td>
-              <div class="members">
-                <td v-for="(i2, index2) in i" :key="index2">{{ i2 }}</td>
-              </div>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    </div>
+    <div class="makeGroup mb-5">
+      
+      <!-- 36席の席を表示 -->
+        
+        <div v-for="n in GroupByGroup" class="group">
+          <div v-for="i in n" class="seat" :class="i ? (i.isLeader ? 'leader' : '') : ''">
+            {{ i ? i.value : "" }}
+          </div>
+        </div>
+      
     </div>
   </div>
   <AuthorDescription />
@@ -127,20 +108,17 @@ import { sleep } from "sleep-ts";
 import { useCookies } from "vue3-cookies";
 import { Base64 } from "js-base64";
 import memberTypeToArray from "@/utils/memberTypeToArray";
-import pickUpLeaders from "@/utils/pickUpLeaders"
+import pickUpLeaders from "@/utils/pickUpLeaders";
 import shuffleArray from "@/utils/shuffleArray";
 import AuthorDescription from "@/components/AuthorDescription.vue";
-//@ts-ignore
-import Chance from "chance";
-
-const chance = new Chance();
 
 const { cookies } = useCookies();
 
 interface memberType {
   value: string,
   status: boolean,
-  isLeader: boolean
+  isLeader: boolean,
+  gender: 1 | 2
 }
 
 const isProd = computed(() => {
@@ -149,27 +127,35 @@ const isProd = computed(() => {
   return prodReg.test(host);
 });
 
-type gradeType = 1 | 2;
+type genderType = 1 | 2;
 
-const firstGradeMembers = ref<memberType[]>([]);
-const secondGradeMembers = ref<memberType[]>([]);
+const maleMembers = ref<memberType[]>([]);
+const femaleMembers = ref<memberType[]>([]);
 
-const firstGradeInput = ref("");
-const secondGradeInput = ref("");
+const maleInput = ref("");
+const femaleInput = ref("");
 
-const GroupNum = ref<number>(0);
-const memberNum = ref<number>(0);
+const GroupNum = ref<number>(6);
+const GroupByGroup = ref<memberType[][]>([[], [], [], [], [], []]);
 
-const GroupByMember = ref<string[][]>();
-const GroupByGroup = ref<string[][]>();
+const emptyMember: memberType = {
+  value: "",
+  isLeader: false,
+  status: true,
+  gender: 1
+}
+
+watch(GroupByGroup, () => GroupByGroup.value.forEach(v =>{
+  while (v.length !==6) v.push(emptyMember)
+}))
 
 watchEffect(() => {
-  const firstGradeArr = firstGradeMembers.value;
-  const secondGradeArr = secondGradeMembers.value;
+  const maleArr = maleMembers.value;
+  const femaleArr = femaleMembers.value;
 
-  if (firstGradeArr.length == 0 && secondGradeArr.length == 0) return;
+  if (maleArr.length == 0 && femaleArr.length == 0) return;
 
-  const membersArr = [[...firstGradeArr], [...secondGradeArr]];
+  const membersArr = [[...maleArr], [...femaleArr]];
 
   const members = JSON.stringify(membersArr);
 
@@ -192,33 +178,35 @@ onMounted(() => {
 
   const membersArr: memberType[][] = JSON.parse(Base64.decode(cookies.get("members")));
 
-  firstGradeMembers.value = membersArr[0];
+  maleMembers.value = membersArr[0];
 
-  secondGradeMembers.value = membersArr[1];
+  femaleMembers.value = membersArr[1];
 
 
 });
 
 
-const addMember = (grade: gradeType) => {
-  switch (grade) {
+const addMember = (gender: genderType) => {
+  switch (gender) {
     case 1:
-      if (!firstGradeInput.value) break;
-      firstGradeMembers.value.push({
-        value: firstGradeInput.value,
+      if (!maleInput.value) break;
+      maleMembers.value.push({
+        value: maleInput.value,
         status: true,
-        isLeader: false
+        isLeader: false,
+        gender: 1
       });
-      firstGradeInput.value = "";
+      maleInput.value = "";
       break;
     case 2:
-      if (!secondGradeInput.value) break;
-      secondGradeMembers.value.push({
-        value: secondGradeInput.value,
+      if (!femaleInput.value) break;
+      femaleMembers.value.push({
+        value: femaleInput.value,
         status: true,
-        isLeader: false
+        isLeader: false,
+        gender: 2
       });
-      secondGradeInput.value = "";
+      femaleInput.value = "";
       break;
     default:
       return; 
@@ -226,39 +214,39 @@ const addMember = (grade: gradeType) => {
 }
 
 
-const toggleStatus = (event: Event, grade: gradeType, index: number) => {
-  switch (grade) {
+const toggleStatus = (event: Event, gender: genderType, index: number) => {
+  switch (gender) {
     case 1:
-      firstGradeMembers.value[index].status = (event.target as HTMLInputElement).checked;
+      maleMembers.value[index].status = (event.target as HTMLInputElement).checked;
       break;
     case 2:
-      secondGradeMembers.value[index].status = (event.target as HTMLInputElement).checked;
+      femaleMembers.value[index].status = (event.target as HTMLInputElement).checked;
       break;
     default:
       break;
   }
 }
 
-const toggleIsLeader = (event: Event, grade: gradeType, index: number) => {
-  switch (grade) {
+const toggleIsLeader = (event: Event, gender: genderType, index: number) => {
+  switch (gender) {
     case 1:
-      firstGradeMembers.value[index].isLeader = (event.target as HTMLInputElement).checked;
+      maleMembers.value[index].isLeader = (event.target as HTMLInputElement).checked;
       break;
     case 2:
-      secondGradeMembers.value[index].isLeader = (event.target as HTMLInputElement).checked;
+      femaleMembers.value[index].isLeader = (event.target as HTMLInputElement).checked;
       break;
     default:
       break;
   }
 }
 
-const popMember = (grade: gradeType, index: number) => {
-  switch (grade) {
+const popMember = (gender: genderType, index: number) => {
+  switch (gender) {
     case 1:
-      firstGradeMembers.value.splice(index, 1);
+      maleMembers.value.splice(index, 1);
       break;
     case 2:
-      secondGradeMembers.value.splice(index, 1);
+      femaleMembers.value.splice(index, 1);
       break;
     default:
       break;
@@ -271,91 +259,105 @@ const makeGroupByGroup = async () => {
   if (GroupNum.value < 1) return;
 
   //作成されたグループを入れるための二次元配列
-  const groups: string[][] = []
+  const groups: memberType[][] = []
 
   for (let i = 0; i < GroupNum.value; i++) groups.push([]);
 
 
-  const firstGrade = shuffleArray<string>(memberTypeToArray(firstGradeMembers.value));
-  const secondGrade = shuffleArray<string>(memberTypeToArray(secondGradeMembers.value));
+  const male = shuffleArray<memberType>(memberTypeToArray(maleMembers.value));
+  const female = shuffleArray<memberType>(memberTypeToArray(femaleMembers.value));
+  const leaders = shuffleArray(pickUpLeaders(maleMembers.value, femaleMembers.value));
+
+  const maleLeaders: memberType[] = []
+  const femaleLeaders: memberType[] = []
+
+  leaders.forEach(v => {
+    if (v.gender === 1) {
+      maleLeaders.push(v)
+    } else {
+      femaleLeaders.push(v)
+    }
+  })
 
   //watchを使うためにref
   let groupIndex = ref(0);
 
+  let maleCnt = 0
+
+  let femaleCnt = 0
+
+  let isMaleTime = true
+
+  let useAbleMale = true
+
+  let useAbleFemale = true
+
+  let cnt = 0;
+
   //参照するグループのインデックスが範囲外になったら元に戻す。
   const unWatch = watch(groupIndex, newVal => {
-    if (newVal == GroupNum.value) groupIndex.value = 0;
+    if (newVal == GroupNum.value)  {
+      cnt++
+      groupIndex.value = 0;
+      if (cnt == 1 || cnt == 3)  isMaleTime = !isMaleTime
+    }
   });
 
+  while (useAbleMale || useAbleFemale) {
+    await sleep(10)
+    if (isMaleTime) {
+      groups[groupIndex.value].push(male[maleCnt])
+      maleCnt++;
+    } else {
+      groups[groupIndex.value].push(female[femaleCnt])
+      femaleCnt++;
+    }
+    groupIndex.value++
 
-  for (let i = 0; i < firstGrade.length; i++) {
-    await sleep(10);
-    groups[groupIndex.value].push(firstGrade[i]);
-    groupIndex.value++;
+    if (maleCnt === male.length - 1) {
+      isMaleTime = false
+      useAbleMale = false
+    }
+
+    if (femaleCnt === female.length - 1) {
+      isMaleTime = true
+      useAbleFemale = false
+    }
+
   }
 
-  for (let i = 0; i < secondGrade.length; i++) {
-    await sleep(10);
-    groups[groupIndex.value].push(secondGrade[i]);
-    groupIndex.value++;
+  let maleLeadersCnt = 0
+
+  let femaleLeadersCnt = 0
+
+  for (let i = 0; i < 6; i++) {
+    if (groups[i].slice(-1)[0].gender === 1  && groups[i].length === 5) {
+      groups[i].push(femaleLeaders[femaleLeadersCnt])
+      femaleLeadersCnt++
+    } else {
+      groups[i].push(maleLeaders[maleLeadersCnt])
+      maleLeadersCnt++
+    }
   }
+
+  for (let i = 4; i < 6; i++) {
+    groups[i].splice(4, 1, emptyMember)
+    groups[i].push(femaleLeaders[i-3])
+  }
+
+  const group1_4 = {...groups[1][4]}
+  const group1_5 = {...groups[1][5]}
+
+  groups[1][4] = group1_5
+  groups[1][5] = group1_4
 
   unWatch();
+  
 
   GroupByGroup.value = [...groups];
 }
 
 
-const makeGroupByMember = async () => {
-
-  if (memberNum.value < 1) return;
-
-
-
-  //作成されたグループを入れるための二次元配列
-  const groups: string[][] = [];
-
-  const leaders = pickUpLeaders(firstGradeMembers.value, secondGradeMembers.value)
-
-  const firstGrade = shuffleArray<string>(memberTypeToArray(firstGradeMembers.value));
-  const secondGrade = shuffleArray<string>(memberTypeToArray(secondGradeMembers.value));
-  //全体のメンバー数。
-  const allMembersNumber = firstGrade.length + secondGrade.length;
-  //余ったメンバー分のグループも用意するためにceil。
-  const calcatedGroupNum = Math.ceil(allMembersNumber / memberNum.value);
-
-  if (allMembersNumber === 0) return;
-
-  for (let i = 0; i < calcatedGroupNum; i++) groups.push([]);
-
-  let groupIndex = ref(0);
-
-  const unWatch = watch(groupIndex, newVal => {
-    if (newVal == calcatedGroupNum) groupIndex.value = 0;
-  });
-
-
-  for (let i = 0; i < firstGrade.length; i++) {
-    await sleep(10);
-    groups[groupIndex.value].push(firstGrade[i]);
-    groupIndex.value++;
-  }
-
-  for (let i = 0; i < secondGrade.length; i++) {
-    await sleep(10);
-    groups[groupIndex.value].push(secondGrade[i]);
-    groupIndex.value++;
-  }
-
-
-  unWatch();
-
-  
-
-  GroupByMember.value = [...groups];
-  
-
-};
 
 const importMembersData = (event: Event) => {
   if ((event.target as HTMLInputElement).files === null) {
@@ -377,8 +379,8 @@ const importMembersData = (event: Event) => {
     try {
 
       const jsonObj = JSON.parse(reader.result as string);
-      firstGradeMembers.value = jsonObj.firstGrade;
-      secondGradeMembers.value = jsonObj.secondGrade;
+      maleMembers.value = jsonObj.male;
+      femaleMembers.value = jsonObj.female;
 
     } catch (e) {
 
@@ -394,8 +396,8 @@ const importMembersData = (event: Event) => {
 
 const downloadMembersData = (event: Event) => {
   const members = {
-    firstGrade: [...firstGradeMembers.value],
-    secondGrade: [...secondGradeMembers.value]
+    male: [...maleMembers.value],
+    female: [...femaleMembers.value]
   }
 
   const formattedMembers = JSON.stringify(members, null, "\t");
@@ -408,18 +410,20 @@ const downloadMembersData = (event: Event) => {
 
 const enableAllMembers = () => {
 
-  firstGradeMembers.value = firstGradeMembers.value.map(({ value, isLeader }) => {
+  maleMembers.value = maleMembers.value.map(({ value, isLeader, gender }) => {
     return {
       value,
       isLeader,
+      gender,
       status: true
     }
   });
 
-  secondGradeMembers.value = secondGradeMembers.value.map(({ value, isLeader }) => {
+  femaleMembers.value = femaleMembers.value.map(({ value, isLeader, gender }) => {
     return {
       value,
       isLeader,
+      gender,
       status: true
     }
   });
@@ -429,19 +433,21 @@ const enableAllMembers = () => {
 
 const disableAllMembers = () => {
 
-  firstGradeMembers.value = firstGradeMembers.value.map(({ value, isLeader }) => {
+  maleMembers.value = maleMembers.value.map(({ value, isLeader, gender }) => {
     return {
       value,
       isLeader,
-      status: false
+      status: false,
+      gender
     }
   });
 
-  secondGradeMembers.value = secondGradeMembers.value.map(({ value, isLeader }) => {
+  femaleMembers.value = femaleMembers.value.map(({ value, isLeader, gender }) => {
     return {
       value,
       isLeader,
-      status: false
+      status: false,
+      gender
     }
   });
 }
@@ -541,53 +547,46 @@ div.container {
   }
 
   div.makeGroup {
+
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-    height: fit-content;
-    min-height: 60vh;
+    gap: 0.1em 0.1em;
 
-    div {
-      width: 50%;
-
-      table {
-        margin: 0 auto;
-        margin-top: 2em;
-        border: solid 2px black;
-        width: 80%;
-
-        * {
-          font-size: 1em;
-        }
-
-        tr {
-          border: solid 1px black;
-
-          div.members {
-
-            display: flex;
-            flex-wrap: wrap;
-            width: 100%;
-
-            td {
-              border: solid 0.5px #c3c3c3;
-              border-left: none;
-              padding: 0 0.5em;
-            }
-
-          }
-
-          td:nth-child(1) {
-            border: solid 1px black;
-          }
-
-        }
-      }
+    & > * {
+      margin: 0 auto;
     }
+    
+
+    .group {
+        height: 10%;
+        width:30%;
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .seat {
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 0.5em;
+      width: 5em;
+      height: 3em;
+      background-color: #2752fb;
+      color: #fff;
+      text-align: center;
+      line-height: 40px;
+      border-radius: 5px;
+    }
+    .leader {
+      background-color: #00388d;
+    }
+
+    }
+
   }
 
-}
+
 
 .disable {
   color: #adadad;
@@ -694,4 +693,6 @@ div.menu {
   }
 
 }
+
+
 </style>

@@ -7,11 +7,11 @@ import App from "@/App.vue";
 describe("main", async () => {
     const wrapper = mount(App);
 
-    const firstGradeInput = wrapper.find(".first");
-    await firstGradeInput.setValue("testMember");
+    const maleInput = wrapper.find(".first");
+    await maleInput.setValue("testMember");
 
-    const firstGradeAddBtn = wrapper.find(".firstRegister");
-    await firstGradeAddBtn.trigger("click");
+    const maleAddBtn = wrapper.find(".firstRegister");
+    await maleAddBtn.trigger("click");
 
     const disableButton = wrapper.find(".disable-all-members");
     await disableButton.trigger("click");

@@ -1,14 +1,15 @@
 interface memberType {
     value: string,
     status: boolean,
-    isLeader: boolean
+    isLeader: boolean,
+    gender: 1 | 2
 }
 
 const memberTypeToArray = (src: memberType[]) => {
-    const array: string[] = []
+    const array: memberType[] = []
     for (const i of src) {
-        if (!i.status) continue;
-        array.push(i.value);
+        if (!i.status || i.isLeader) continue;
+        array.push(i);
     }
 
     return array;
