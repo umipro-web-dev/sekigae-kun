@@ -1,7 +1,7 @@
 <template>
     <footer class="light">
         <div class="src">
-                <h>ソースコードは<a href="https://github.com/umipro-web-dev/makeGroup" target="_blank" rel="noopener noreferrer">こちら</a></h>
+                <h>ソースコードは<a href="https://github.com/umipro-web-dev/sekigae-kun" target="_blank" rel="noopener noreferrer">こちら</a></h>
                 <h class="last-updated-date">最終更新日時: {{ LastUpdatedDate }}</h>
         </div>
         <span class="author">

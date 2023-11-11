@@ -1,10 +1,10 @@
 <!--
-   __  __       _         ____                       
-  |  \/  | __ _| | _____ / ___|_ __ ___  _   _ _ __  
-  | |\/| |/ _` | |/ / _ \ |  _| '__/ _ \| | | | '_ \ 
-  | |  | | (_| |   <  __/ |_| | | | (_) | |_| | |_) |
-  |_|  |_|\__,_|_|\_\___|\____|_|  \___/ \__,_| .__/ 
-                                              |_| 
+          _    _                        _                
+ ___  ___| | _(_) __ _  __ _  ___      | | ___   _ _ __  
+/ __|/ _ \ |/ / |/ _` |/ _` |/ _ \_____| |/ / | | | '_ \ 
+\__ \  __/   <| | (_| | (_| |  __/_____|   <| |_| | | | |
+|___/\___|_|\_\_|\__, |\__,_|\___|     |_|\_\\__,_|_| |_|
+                 |___/                                   
   
   This AA was created by figlet.
   
@@ -12,8 +12,8 @@
 
 <template>
   <div class="container">
-    <h2 class="title mb-4 main">グループ分け</h2>
-    <p class="text mb-5">公正なグループ分けに。</p>
+    <h2 class="title mb-4 main">席替えくん</h2>
+    <p class="text mb-5">席替えを素早くしたいときに。</p>
     <h class="title">メンバーを追加</h>
     <div class="menu mt-5">
       <label for="import" class="importLabel">
@@ -90,11 +90,18 @@
       <!-- 36席の席を表示 -->
         
         <div v-for="n in GroupByGroup" class="group">
-          <div v-for="i in n" class="seat" :class="i ? (i.isLeader ? 'leader' : '') : ''">
+          <div v-for="i in n" class="seat" :class="[i ? (i.isLeader ? 'leader' : '') : '', i ? (i.gender === 1 ? 'male' : 'female'): '']">
             {{ i ? i.value : "" }}
           </div>
         </div>
       
+    </div>
+    <p class="title mb-5">席の手動変更</p>
+    <div class="manualChange">
+      <div class="beforeSeat"><input type="number"/>班<input type="number"/>番</div>
+      <span>→</span>
+      <div class="afterSeat"><input type="number"/>班<input type="number"/>番</div>
+      <button class="btn btn-primary">変更</button>
     </div>
   </div>
   <AuthorDescription />
@@ -136,7 +143,7 @@ const maleInput = ref("");
 const femaleInput = ref("");
 
 const GroupNum = ref<number>(6);
-const GroupByGroup = ref<memberType[][]>([[], [], [], [], [], []]);
+const GroupByGroup = ref<(memberType | undefined)[][]>([[], [], [], [], [], []]);
 
 const emptyMember: memberType = {
   value: "",
@@ -145,8 +152,10 @@ const emptyMember: memberType = {
   gender: 1
 }
 
-watch(GroupByGroup, () => GroupByGroup.value.forEach(v =>{
-  while (v.length !==6) v.push(emptyMember)
+watch (GroupByGroup, ()=>GroupByGroup.value.forEach((v, i1)=>{
+    v.forEach((item, i2)=>{
+      if (item === undefined) GroupByGroup.value[i1].splice(i2, 1, emptyMember)
+    }) 
 }))
 
 watchEffect(() => {
@@ -187,6 +196,8 @@ onMounted(() => {
 
 
 const addMember = (gender: genderType) => {
+    if (maleMembers.value.length + femaleMembers.value.length >= 36) return;
+
   switch (gender) {
     case 1:
       if (!maleInput.value) break;
@@ -303,6 +314,8 @@ const makeGroupByGroup = async () => {
     }
   });
 
+  
+
   while (useAbleMale || useAbleFemale) {
     await sleep(10)
     if (isMaleTime) {
@@ -314,14 +327,16 @@ const makeGroupByGroup = async () => {
     }
     groupIndex.value++
 
-    if (maleCnt === male.length - 1) {
+    if (maleCnt === male.length) {
       isMaleTime = false
       useAbleMale = false
+      unWatch()
     }
 
-    if (femaleCnt === female.length - 1) {
+    if (femaleCnt === female.length) {
       isMaleTime = true
       useAbleFemale = false
+      unWatch()
     }
 
   }
@@ -340,21 +355,19 @@ const makeGroupByGroup = async () => {
     }
   }
 
-  for (let i = 4; i < 6; i++) {
-    groups[i].splice(4, 1, emptyMember)
-    groups[i].push(femaleLeaders[i-3])
-  }
+  const fixedGroups = groups.map((v, i) =>{
+    if (i <= 2) return v
+    return [
+      v[1],
+      v[0],
+      v[3],
+      v[2],
+      v[5],
+      v[4]    
+    ]
+  })
 
-  const group1_4 = {...groups[1][4]}
-  const group1_5 = {...groups[1][5]}
-
-  groups[1][4] = group1_5
-  groups[1][5] = group1_4
-
-  unWatch();
-  
-
-  GroupByGroup.value = [...groups];
+  GroupByGroup.value = [...fixedGroups];
 }
 
 
@@ -572,14 +585,21 @@ div.container {
       margin-bottom: 0.5em;
       width: 5em;
       height: 3em;
-      background-color: #2752fb;
       color: #fff;
       text-align: center;
       line-height: 40px;
       border-radius: 5px;
     }
+
+    .male { 
+      background-color: #0b5ed7;
+    }
+
+    .female {
+      background-color: #f93ab6;
+    }
     .leader {
-      background-color: #00388d;
+      border: 3px solid #000000;
     }
 
     }
@@ -692,6 +712,29 @@ div.menu {
     margin-right: 2em;
   }
 
+}
+
+
+div.manualChange {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  margin: 0 auto;
+
+  div {
+    font-size: small;
+
+    input {
+      width:30%;
+      font-size: inherit;
+      line-height: inherit;
+    }
+
+  }
+
+  button {
+    margin-bottom: 1em;
+  }
 }
 
 
