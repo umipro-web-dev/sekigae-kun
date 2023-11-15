@@ -648,15 +648,15 @@ div.container {
 
     .group {
         height: 10%;
-        width:30%;
+        width:calc(33% - 0.2em);
         display: flex;
         flex-wrap: wrap;
         padding-top: 0.5em;
     }
 
     .seat {
-      margin-left: auto;
-      margin-right: auto;
+      margin-left: calc((50% - 5em) / 2);
+      margin-right: calc((50% - 5em) / 2);
       margin-bottom: 0.5em;
       width: 5em;
       height: 3em;
@@ -819,7 +819,6 @@ div.manualChange {
 
 .seatMenu {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-around;
   margin-top: 0.5em;
   margin-bottom: 1em;
