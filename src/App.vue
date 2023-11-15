@@ -27,6 +27,7 @@
       <button class="btn btn-primary disable-all-members" @click="disableAllMembers">
         全生徒を無効化
       </button>
+      <label><input type="checkbox" v-model="isJh" checked/>左上を開ける</label>
     </div>
     <div class="add-member mt-5">
       <div class="gender-one">
@@ -100,7 +101,7 @@
     </div>
     <div class="seatMenu" v-if="isGroupCreated">
         <label><input type="checkbox" v-model="isShownIndex"/>　席の番号を表示する</label>
-        <a class="btn btn-primary" href="#" download="img.png" @click="downloadSeatImage($event)">席の画像を取得する</a>
+        <a class="btn btn-primary" href="#" download="seats.png" @click="downloadSeatImage($event)">席の画像を取得する</a>
 
     </div>
     <p class="title mb-5">席の手動変更</p>
@@ -169,7 +170,7 @@ const seatDom = ref<HTMLElement>()
 
 const isGroupCreated = ref(false)
 
-const isJh = true
+const isJh = ref(true)
 
 const emptyMember: memberType = {
   value: "",
@@ -185,6 +186,8 @@ watch(GroupByGroup, ()=>GroupByGroup.value.forEach((v, i1)=>{
 }))
 
 watchEffect(() => {
+  // setting cookie
+
   const maleArr = maleMembers.value;
   const femaleArr = femaleMembers.value;
 
@@ -207,6 +210,8 @@ watchEffect(() => {
 
 onMounted(() => {
 
+  // getting cookie
+
   const membersCookie = cookies.get("members");
 
   if (!membersCookie) return;
@@ -222,7 +227,10 @@ onMounted(() => {
 
 
 const addMember = (gender: genderType) => {
-    if (maleMembers.value.length + femaleMembers.value.length >= 36) return;
+    if (maleMembers.value.length + femaleMembers.value.length >= 36) {
+      alert("人数が上限に達しました。")
+      return;
+    }
 
   switch (gender) {
     case 1:
@@ -292,8 +300,6 @@ const popMember = (gender: genderType, index: number) => {
 
 
 const makeGroupByGroup = async () => {
-  //指定グループ数が0だった場合リターン
-  if (GroupNum.value < 1) return;
 
   //作成されたグループを入れるための二次元配列
   const groups: memberType[][] = []
@@ -393,7 +399,7 @@ const makeGroupByGroup = async () => {
     ]
   })
 
-  if (isJh){ 
+  if (isJh.value){ 
 
   const front1member = fixedGroups[0][0]
 
@@ -531,7 +537,10 @@ const disableAllMembers = () => {
 }
 
 const downloadSeatImage = (event: Event) =>{
-  if (!isGroupCreated.value) return
+  if (!isGroupCreated.value) {
+    alert("席が未作成です。")
+    return
+  }
   html2canvas(seatDom.value!).then(img =>{
     const dataUrl = img.toDataURL();
 
@@ -717,7 +726,7 @@ div.menu {
   width: 80%;
   margin: 0 auto;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: space-around;
   border: solid 1px #656565;
   border-radius: 10px;
   padding: 1em;
@@ -752,7 +761,7 @@ div.menu {
 
   }
 
-  label {
+  label.importLabel {
     color: #ffffff;
     background-color: $bs-blue;
     cursor: pointer;
@@ -768,7 +777,7 @@ div.menu {
 
   }
 
-  label>input {
+  label>input[type=file] {
     display: none;
   }
 
