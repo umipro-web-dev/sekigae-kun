@@ -85,23 +85,30 @@
     <div class="makeGroupByGroupNum mb-5">
         <button class="btn btn-primary" @click="makeGroupByGroup">実行</button>
     </div>
-    <div class="makeGroup mb-5">
+    <div class="makeGroup mb-5" ref="seatDom">
       
       <!-- 36席の席を表示 -->
         
         <div v-for="n in GroupByGroup" class="group">
-          <div v-for="i in n" class="seat" :class="[i ? (i.isLeader ? 'leader' : '') : '', i ? (i.gender === 1 ? 'male' : 'female'): '']">
+          <div v-for="i, index in n" class="seat" :class="[i ? (i.isLeader ? 'leader' : '') : '', i ? (i.gender === 1 ? 'male' : 'female'): '']">
             {{ i ? i.value : "" }}
+            <span class="indexClass" v-if="isShownIndex">({{ index+1 }})</span>
           </div>
         </div>
+        
       
+    </div>
+    <div class="seatMenu" v-if="isGroupCreated">
+        <label><input type="checkbox" v-model="isShownIndex"/>　席の番号を表示する</label>
+        <a class="btn btn-primary" href="#" download="img.png" @click="downloadSeatImage($event)">席の画像を取得する</a>
+
     </div>
     <p class="title mb-5">席の手動変更</p>
     <div class="manualChange">
-      <div class="beforeSeat"><input type="number"/>班<input type="number"/>番</div>
+      <div class="beforeSeat"><input type="number" v-model="prevGroup"/>班<input type="number" v-model="prevSeat"/>番</div>
       <span>→</span>
-      <div class="afterSeat"><input type="number"/>班<input type="number"/>番</div>
-      <button class="btn btn-primary">変更</button>
+      <div class="afterSeat"><input type="number" v-model="afterGroup"/>班<input type="number" v-model="afterSeat"/>番</div>
+      <button class="btn btn-primary" @click="manualModify">変更</button>
     </div>
   </div>
   <AuthorDescription />
@@ -114,10 +121,12 @@ import { ref, watch, watchEffect, onMounted, computed } from "vue";
 import { sleep } from "sleep-ts";
 import { useCookies } from "vue3-cookies";
 import { Base64 } from "js-base64";
+import html2canvas from "html2canvas"
 import memberTypeToArray from "@/utils/memberTypeToArray";
 import pickUpLeaders from "@/utils/pickUpLeaders";
 import shuffleArray from "@/utils/shuffleArray";
 import AuthorDescription from "@/components/AuthorDescription.vue";
+import unProxied from "@/utils/unProxied";
 
 const { cookies } = useCookies();
 
@@ -127,6 +136,8 @@ interface memberType {
   isLeader: boolean,
   gender: 1 | 2
 }
+
+const convertingListForGroupNum = [2, 5, 1, 4, 0, 3]
 
 const isProd = computed(() => {
   const host = window.location.hostname;
@@ -145,6 +156,21 @@ const femaleInput = ref("");
 const GroupNum = ref<number>(6);
 const GroupByGroup = ref<(memberType | undefined)[][]>([[], [], [], [], [], []]);
 
+
+const prevGroup = ref("")
+const prevSeat = ref("")
+
+const afterGroup = ref("")
+const afterSeat = ref("")
+
+const isShownIndex = ref<boolean>(false)
+
+const seatDom = ref<HTMLElement>()
+
+const isGroupCreated = ref(false)
+
+const isJh = true
+
 const emptyMember: memberType = {
   value: "",
   isLeader: false,
@@ -152,7 +178,7 @@ const emptyMember: memberType = {
   gender: 1
 }
 
-watch (GroupByGroup, ()=>GroupByGroup.value.forEach((v, i1)=>{
+watch(GroupByGroup, ()=>GroupByGroup.value.forEach((v, i1)=>{
     v.forEach((item, i2)=>{
       if (item === undefined) GroupByGroup.value[i1].splice(i2, 1, emptyMember)
     }) 
@@ -367,10 +393,49 @@ const makeGroupByGroup = async () => {
     ]
   })
 
+  if (isJh){
+
+  const front1member = fixedGroups[0][0]
+
+  const front2member = fixedGroups[0][1]
+
+  fixedGroups[0][0] = fixedGroups[4][4]
+  fixedGroups[0][1]  = fixedGroups[5][4]
+
+  fixedGroups[4][4] = front1member
+  fixedGroups[5][4] = front2member
+
+  }
+
+
+
   GroupByGroup.value = [...fixedGroups];
+
+  isGroupCreated.value = true
 }
 
 
+const isValidSeatValue = (value: number): boolean => value >= 0 && value <= 5 && Math.floor(value) === value
+
+const manualModify = () => {
+  if (!isGroupCreated.value) {
+    alert("まだ席が作成されていません")
+    return
+  }
+
+  const prevGroupNum = parseInt(prevGroup.value) - 1
+  const prevSeatNum = parseInt(prevSeat.value) - 1
+  const afterGroupNum = parseInt(afterGroup.value) - 1
+  const afterSeatNum = parseInt(afterSeat.value) - 1 
+  if (!(isValidSeatValue(prevGroupNum) && isValidSeatValue(prevSeatNum) && isValidSeatValue(afterGroupNum) && isValidSeatValue(afterSeatNum))) return
+  const afterSeatInfo: memberType = structuredClone(unProxied(GroupByGroup.value[convertingListForGroupNum[afterGroupNum]][afterSeatNum])) as memberType
+
+  GroupByGroup.value[convertingListForGroupNum[afterGroupNum]][afterSeatNum] = structuredClone(unProxied(GroupByGroup.value[convertingListForGroupNum[prevGroupNum]][prevSeatNum])) as memberType
+
+  GroupByGroup.value[convertingListForGroupNum[prevGroupNum]][prevSeatNum] = structuredClone(afterSeatInfo)
+
+  
+}
 
 const importMembersData = (event: Event) => {
   if ((event.target as HTMLInputElement).files === null) {
@@ -463,6 +528,15 @@ const disableAllMembers = () => {
       gender
     }
   });
+}
+
+const downloadSeatImage = (event: Event) =>{
+  if (!isGroupCreated.value) return
+  html2canvas(seatDom.value!).then(img =>{
+    const dataUrl = img.toDataURL();
+
+    (event.target as HTMLAnchorElement).href = dataUrl
+  })
 }
 
 </script>
@@ -577,6 +651,7 @@ div.container {
         width:30%;
         display: flex;
         flex-wrap: wrap;
+        padding-top: 0.5em;
     }
 
     .seat {
@@ -661,7 +736,7 @@ div.menu {
     bottom: 4.3vw;
   }
 
-  a {
+  a.export {
     text-decoration: none;
     color: #ffffff;
     background-color: $bs-blue;
@@ -737,5 +812,20 @@ div.manualChange {
   }
 }
 
+.indexClass {
+  font-size: 0.7em;
+  text-align: end;
+}
 
+.seatMenu {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  margin-top: 0.5em;
+  margin-bottom: 1em;
+  a {
+    @extend .export;
+    font-size: 0.8em;
+  }
+}
 </style>
