@@ -393,7 +393,7 @@ const makeGroupByGroup = async () => {
     ]
   })
 
-  if (isJh){
+  if (isJh){ 
 
   const front1member = fixedGroups[0][0]
 
